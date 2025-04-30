@@ -1,0 +1,13 @@
+﻿<div class="dashboard-card">
+    <img src="@ImageSrc" alt="Not found" class="dashboard-card-image" />
+    <a href="@Link">
+        <button>@ButtonText</button>
+    </a>
+</div>
+
+@code {
+    [Parameter] public string ImageSrc { get; set; }
+    [Parameter] public string ButtonText { get; set; }
+    [Parameter] public string Link { get; set; }
+    
+}

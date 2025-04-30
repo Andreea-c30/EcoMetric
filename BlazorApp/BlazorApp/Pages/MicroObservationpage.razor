@@ -1,0 +1,326 @@
+﻿@page "/microobservations"
+@using System.Text.Json
+@inject IJSRuntime jsRuntime
+@using BrowserInterop.Extensions
+@using BrowserInterop.Geolocation
+@using Radzen
+
+<PageTitle>Micro Observations</PageTitle>
+
+<h1>Wildlife Micro Observation Log</h1>
+<p>Log your wildlife micro-observations and track environmental conditions.</p>
+
+<h3>Your location</h3>
+<button type="button" class="btn btn-info" @onclick="GetLocation">Get Current Position</button>
+
+@if (!string.IsNullOrEmpty(notificationMessage))
+{
+    <div class="alert alert-success">@notificationMessage</div>
+}
+
+<h2>Recent Micro Observations</h2>
+
+@if (observations.Count > 0)
+{
+    <div class="row">
+        @foreach (var observation in observations)
+        {
+            <div class="col-md-4">
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Observation on @observation.Date.ToShortDateString()</h5>
+                        <p><strong>Location:</strong> LAT: @observation.Latitude, LNG: @observation.Longitude</p>
+                        <p><strong>Comments:</strong> @observation.Comments</p>
+                        <p><strong>Animals Observed:</strong></p>
+                        <ul>
+                            @foreach (var animal in observation.Animals)
+                            {
+                                <li>
+                                    <strong>@animal.Name</strong> (Scientific Name: @animal.ScientificName)
+                                    <p>Description: @animal.Description</p>
+                                    <p>Category: @animal.Category</p>
+                                    @if (!string.IsNullOrEmpty(animal.ImageUrl))
+                                    {
+                                        <img src="@animal.ImageUrl" alt="@animal.Name" style="width: 100px;" />
+                                    }
+                                    <p>Notes: @animal.Notes</p>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+<button class="btn btn-primary mb-4" @onclick="ShowObservationForm">Add Micro Observation</button>
+
+@if (isFormVisible)
+{
+    <div class="card">
+        <div class="card-body">
+            <h2>Add New Micro Observation</h2>
+            <form>
+                <!-- Animal Selection Form -->
+                <div class="mb-3">
+                    <button type="button" class="btn btn-secondary" @onclick="ShowAnimalForm">Add Animal</button>
+                </div>
+
+                @if (isAnimalFormVisible)
+                {
+                    <!-- Animal Form -->
+                    <div>
+                        <h4>Add Animal</h4>
+                        <div class="mb-3">
+                            <label class="form-label">Animal Name</label>
+                            <input type="text" class="form-control" @bind="newAnimal.Name" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Scientific Name</label>
+                            <input type="text" class="form-control" @bind="newAnimal.ScientificName" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Description</label>
+                            <textarea class="form-control" @bind="newAnimal.Description" required></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Category</label>
+                            <input type="text" class="form-control" @bind="newAnimal.Category" required />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Animal Image</label>
+                            <input type="file" class="form-control" @onchange="OnFileChange" />
+                            @if (!string.IsNullOrEmpty(uploadedImageUrl))
+                            {
+                                <img src="@uploadedImageUrl" alt="Uploaded Animal Image" class="mt-2" style="width: 100px;" />
+                            }
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Notes</label>
+                            <textarea class="form-control" @bind="newAnimal.Notes"></textarea>
+                        </div>
+
+                        <button class="btn btn-secondary mb-3" type="button" @onclick="AddAnimal">Confirm Animal Details</button>
+                    </div>
+                }
+
+                <!-- Location Selection Buttons -->
+                <div class="mb-3">
+                    <button class="btn btn-primary" type="button" @onclick="UseCurrentLocation">Use Current Location</button>
+                    <button class="btn btn-secondary ms-2" type="button" @onclick="EnableCustomLocation">Select Location</button>
+                </div>
+
+                @if (geolocationPosition != null)
+                {
+                    <div>
+                        <p><strong>Lat:</strong> @geolocationPosition.Coords.Latitude</p>
+                        <p><strong>Long:</strong> @geolocationPosition.Coords.Longitude</p>
+                    </div>
+                }
+
+                <!-- Google Map for Manual Location Selection -->
+                @if (isMapVisible)
+                {
+                    <RadzenGoogleMap Style="height:600px;" Zoom="@zoom"
+                                     Center="@(new GoogleMapPosition() { Lat = 47.169, Lng = 28.514 })"
+                                     MapClick="@OnMapClick">
+                        <Markers>
+                            @if (selectedPosition != null)
+                            {
+                                <RadzenGoogleMapMarker Title="Selected Location"
+                                                       Label="📍"
+                                                       Position="@(selectedPosition)" />
+                            }
+                        </Markers>
+                    </RadzenGoogleMap>
+
+                    <div class="mt-2">
+                        <label>Selected Position:</label>
+                        @if (selectedPosition != null)
+                        {
+                            <span class="text-success">@clickedPosition</span>
+                        }
+                        else
+                        {
+                            <span class="text-danger">No location selected!</span>
+                        }
+                    </div>
+                }
+
+                @if (!string.IsNullOrEmpty(locationError))
+                {
+                    <div class="alert alert-danger">@locationError</div>
+                }
+
+                <div class="mb-3">
+                    <label class="form-label">Comments</label>
+                    <textarea class="form-control" @bind="newObservation.Comments" rows="3"></textarea>
+                </div>
+
+                <button class="btn btn-primary" type="button" @onclick="SubmitObservation">Submit Observation</button>
+            </form>
+        </div>
+    </div>
+}
+
+@code {
+    private WindowNavigatorGeolocation geolocation;
+    private GeolocationPosition geolocationPosition;
+    int zoom = 5;
+    bool useCurrentLocation = false;
+    bool isFormVisible = false;
+    bool isLocationConfirmed = false;
+    bool isAnimalFormVisible = false;
+    string clickedPosition = "";
+    string locationError = "";
+    GoogleMapPosition? selectedPosition = null;
+    private List<Observation> observations = new();
+    private Observation newObservation = new();
+    private Animal newAnimal = new();
+    private string notificationMessage = string.Empty;
+    bool isMapVisible = false;
+    string uploadedImageUrl = "";
+    string animalAddMessage = ""; // Message for animal added confirmation
+
+    private List<Animal> animalOptions = new()
+    {
+        new Animal { Name = "Deer" },
+        new Animal { Name = "Eagle" },
+        new Animal { Name = "Fox" }
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        var window = await jsRuntime.Window();
+        var navigator = await window.Navigator();
+        geolocation = navigator.Geolocation;
+    }
+
+    private async Task GetLocation()
+    {
+        geolocationPosition = (await geolocation.GetCurrentPosition(new PositionOptions()
+            {
+                EnableHighAccuracy = true,
+                MaximumAgeTimeSpan = TimeSpan.FromHours(1),
+                TimeoutTimeSpan = TimeSpan.FromMinutes(1)
+            })).Location;
+    }
+
+    private async Task UseCurrentLocation()
+    {
+        await GetLocation();
+
+        if (geolocationPosition != null)
+        {
+            selectedPosition = new GoogleMapPosition
+                {
+                    Lat = geolocationPosition.Coords.Latitude,
+                    Lng = geolocationPosition.Coords.Longitude
+                };
+            clickedPosition = $"LAT: {selectedPosition.Lat}, LNG: {selectedPosition.Lng}";
+            locationError = "";
+            isLocationConfirmed = true;
+            useCurrentLocation = true;
+        }
+    }
+
+    private void EnableCustomLocation()
+    {
+        selectedPosition = null;
+        clickedPosition = "";
+        isLocationConfirmed = false;
+        useCurrentLocation = false;
+        isMapVisible = true;
+    }
+
+    private void OnMapClick(GoogleMapClickEventArgs args)
+    {
+        if (!useCurrentLocation)
+        {
+            selectedPosition = new GoogleMapPosition { Lat = args.Position.Lat, Lng = args.Position.Lng };
+            clickedPosition = $"LAT: {args.Position.Lat}, LNG: {args.Position.Lng}";
+            locationError = "";
+            isLocationConfirmed = true;
+            StateHasChanged();
+        }
+    }
+
+    private void AddAnimal()
+    {
+        // Add the current animal to the observation list
+        if (newAnimal != null && !string.IsNullOrEmpty(newAnimal.Name))
+        {
+            newObservation.Animals.Add(newAnimal);
+            animalAddMessage = $"{newAnimal.Name} has been added to your micro-observation.";
+            newAnimal = new Animal(); // Reset for the next animal
+        }
+    }
+
+    private void ShowAnimalForm()
+    {
+        isAnimalFormVisible = true; // Show the form to add an animal
+    }
+
+    private async Task OnFileChange(ChangeEventArgs e)
+    {
+        var file = e?.Value as Microsoft.AspNetCore.Components.Forms.IBrowserFile;
+        if (file != null)
+        {
+            // Example: Convert the file to a data URL (for simplicity here)
+            var stream = file.OpenReadStream();
+            var buffer = new byte[file.Size];
+            await stream.ReadAsync(buffer);
+            uploadedImageUrl = $"data:image/png;base64,{Convert.ToBase64String(buffer)}"; // Save the image as base64 URL
+        }
+    }
+
+    private void SubmitObservation()
+    {
+        if (selectedPosition == null || !isLocationConfirmed)
+        {
+            locationError = "You must confirm a location before submitting.";
+            return;
+        }
+
+        newObservation.Latitude = selectedPosition.Lat;
+        newObservation.Longitude = selectedPosition.Lng;
+        newObservation.Date = DateOnly.FromDateTime(DateTime.Now);
+
+        // Add the observation to the list
+        observations.Add(newObservation);
+
+        notificationMessage = "Observation submitted successfully!";
+        newObservation = new Observation(); // Reset for the next observation
+        selectedPosition = null;
+        clickedPosition = "";
+        isLocationConfirmed = false;
+        isFormVisible = false;
+    }
+
+    private void ShowObservationForm() => isFormVisible = true;
+
+    private class Observation
+    {
+        public DateOnly Date { get; set; }
+        public string Comments { get; set; } = "";
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public List<Animal> Animals { get; set; } = new List<Animal>();
+    }
+
+    private class Animal
+    {
+        public string Name { get; set; } = "";
+        public string ScientificName { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Category { get; set; } = "";
+        public string Notes { get; set; } = "";
+        public string? ImageUrl { get; set; }
+    }
+}

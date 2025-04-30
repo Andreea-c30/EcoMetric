@@ -1,0 +1,261 @@
+﻿@page "/chartpg"
+@using ChartJs.Blazor.PieChart
+@using ChartJs.Blazor.BarChart
+@using BrowserInterop.Extensions
+@using System.Text.Json
+@inject IJSRuntime JS
+
+<h1 class="text-center mb-4">📊 Statistici Observații</h1>
+
+@if (_isLoading)
+{
+    <div class="text-center">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else
+{
+    @if (_totalObservations == 0)
+    {
+        <div class="alert alert-warning text-center" role="alert">
+            <strong>Nu există observații salvate.</strong>
+        </div>
+    }
+    else
+    {
+        <div class="text-center mb-4">
+            <h5><strong>Total observații:</strong> @_totalObservations</h5>
+        </div>
+
+        <div class="card mb-4 p-3 shadow-sm">
+            <h4 class="text-center">🎯 Observații după Faza Fenologică</h4>
+            <Chart Config="_pieConfig" />
+        </div>
+
+        <div class="card p-3 shadow-sm">
+            <h4 class="text-center">🐾 Observații după Categorie Animal</h4>
+            <Chart Config="_barConfig" />
+        </div>
+    }
+}
+<style>
+    body {
+        background-color: #4d8438;
+        color: #f5f3cd;
+        font-family: 'Times New Roman';
+    }
+
+    .card.mb-4.p-3.shadow-sm{
+        background-color: #f5f3cd;
+        color: #656764;
+        font-family: 'Times New Roman';
+    }
+
+    .card.p-3.shadow-sm {
+        background-color: #f5f3cd;
+        color: #656764;
+        font-family: 'Times New Roman';
+        height: 40%;
+        width: 70%;
+        margin: 40px auto; /* Center horizontally with margin auto */
+        display: flex; /* Optional: for better content alignment */
+        flex-direction: column; /* stack child elements vertically */
+        align-items: center; /* center content horizontally inside */
+        justify-content: center; /* center content vertically inside */
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.2); /* optional: fancier soft shadow */
+        border-radius: 10px; /* optional: slightly rounded corners */
+    }
+
+</style>
+@code {
+    private PieConfig? _pieConfig;
+    private BarConfig? _barConfig;
+    private int _totalObservations = 0;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var json = await JS.InvokeAsync<string>("localStorage.getItem", "observations");
+
+        if (!string.IsNullOrEmpty(json))
+        {
+            var observations = JsonSerializer.Deserialize<List<Observation>>(json) ?? new();
+            _totalObservations = observations.Count;
+
+            if (_totalObservations > 0)
+            {
+                GeneratePieChart(observations);
+                GenerateBarChart(observations);
+            }
+        }
+
+        _isLoading = false;
+    }
+
+    private void GeneratePieChart(List<Observation> observations)
+    {
+        var phaseGroups = observations
+            .GroupBy(o => o.PhenologicalPhase)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        _pieConfig = new PieConfig
+            {
+                Options = new PieOptions
+                {
+                    Responsive = true,
+                    Title = new OptionsTitle
+                    {
+                        Display = true,
+                        Text = "Distribuția Observațiilor pe Faze Fenologice"
+                    }
+                }
+            };
+
+        foreach (var phase in phaseGroups.Keys)
+        {
+            _pieConfig.Data.Labels.Add(phase);
+        }
+
+        PieDataset<int> dataset = new PieDataset<int>(phaseGroups.Values)
+            {
+                BackgroundColor = GenerateNiceColors(phaseGroups.Count)
+            };
+
+        _pieConfig.Data.Datasets.Add(dataset);
+    }
+
+
+    private void GenerateBarChart(List<Observation> observations)
+    {
+        var allAnimals = observations
+            .SelectMany(o => o.MicroObservations)
+            .Select(m => m.Animal)
+            .ToList();
+
+        var categoryGroups = allAnimals
+            .GroupBy(a => a.Category)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        _barConfig = new BarConfig
+            {
+                Options = new BarOptions
+                {
+                    Responsive = true,
+                    Title = new OptionsTitle
+                    {
+                        Display = true,
+                        Text = "Număr de Animale per Categorie"
+                    },
+                    Scales = new BarScales
+                    {
+                        XAxes = new List<CartesianAxis>
+                    {
+                        new CategoryAxis
+                        {
+                            ScaleLabel = new ScaleLabel
+                            {
+                                Display = true,
+                                LabelString = "Categorie"
+                            }
+                        }
+                    },
+                        YAxes = new List<CartesianAxis>
+                    {
+                        new LinearCartesianAxis
+                        {
+                            Ticks = new LinearCartesianTicks
+                            {
+                                BeginAtZero = true
+                            },
+                            ScaleLabel = new ScaleLabel
+                            {
+                                Display = true,
+                                LabelString = "Număr de Observații"
+                            }
+                        }
+                    }
+                    }
+                }
+            };
+
+        var barDataset = new BarDataset<int>(categoryGroups.Values)
+            {
+                BackgroundColor = GenerateNiceColors(categoryGroups.Count)
+            };
+
+        foreach (var label in categoryGroups.Keys)
+        {
+            _barConfig.Data.Labels.Add(label);
+        }
+
+        _barConfig.Data.Datasets.Add(barDataset);
+    }
+
+    private string[] GenerateNiceColors(int count)
+    {
+        string[] baseColors = new[]
+        {
+        ColorUtil.ColorHexString((byte)255, (byte)99, (byte)132),
+        ColorUtil.ColorHexString((byte)54, (byte)162, (byte)235),
+        ColorUtil.ColorHexString((byte)255, (byte)206, (byte)86),
+        ColorUtil.ColorHexString((byte)75, (byte)192, (byte)192),
+        ColorUtil.ColorHexString((byte)153, (byte)102, (byte)255),
+        ColorUtil.ColorHexString((byte)255, (byte)159, (byte)64),
+        ColorUtil.ColorHexString((byte)199, (byte)199, (byte)199),
+        ColorUtil.ColorHexString((byte)255, (byte)99, (byte)255),
+        ColorUtil.ColorHexString((byte)99, (byte)255, (byte)132),
+        ColorUtil.ColorHexString((byte)132, (byte)99, (byte)255)
+    };
+
+        if (count <= baseColors.Length)
+            return baseColors.Take(count).ToArray();
+
+        var result = new List<string>();
+        var rand = new Random();
+
+        for (int i = 0; i < count; i++)
+        {
+            result.Add(ColorUtil.ColorHexString(
+                (byte)rand.Next(0, 256),
+                (byte)rand.Next(0, 256),
+                (byte)rand.Next(0, 256)
+            ));
+        }
+
+        return result.ToArray();
+    }
+
+
+    public class Observation
+    {
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string ResearcherType { get; set; } = "";
+        public string PhenologicalPhase { get; set; } = "";
+        public string Species { get; set; } = "";
+        public string Location { get; set; } = "";
+        public string Notes { get; set; } = "";
+        public List<MicroObservation> MicroObservations { get; set; } = new();
+    }
+
+    public class MicroObservation
+    {
+        public Animal Animal { get; set; } = new();
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public DateTime Timestamp { get; set; }
+        public string Comments { get; set; } = "";
+        public string PhotoUrl { get; set; } = "";
+    }
+
+    public class Animal
+    {
+        public string Name { get; set; } = "";
+        public string ScientificName { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Category { get; set; } = "";
+        public string Notes { get; set; } = "";
+    }
+}

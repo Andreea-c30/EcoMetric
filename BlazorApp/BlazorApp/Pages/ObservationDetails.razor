@@ -1,0 +1,110 @@
+﻿@page "/observation-details"
+@using System.Text.Json
+
+@inject IJSRuntime jsRuntime
+
+<h2>Detaliile observației</h2>
+
+@if (observation != null)
+{
+    <div class="card p-4 mb-4">
+        <h3>@observation.Title</h3>
+        <p><strong>Descriere:</strong> @observation.Description</p>
+        <p><strong>Specii:</strong> @observation.Species</p>
+        <p><strong>Faza:</strong> @observation.PhenologicalPhase</p>
+        <p><strong>Tip de cercetare:</strong> @observation.ResearcherType</p>
+        <p><strong>Locația:</strong> @observation.Location</p>
+        <p><strong>Temperatura:</strong> @observation.Temperature °C</p>
+        <p><strong>Umiditate:</strong> @observation.Humidity %</p>
+        <p><strong>Starea atmosferică:</strong> @observation.Weather</p>
+        <p><strong>Notițe:</strong> @observation.Notes</p>
+        <p><strong>Detalii suplimentare:</strong> @observation.AdditionalDetails</p>
+
+        @if (observation.MicroObservations?.Any() == true)
+        {
+            <h4 class="mt-4">Micro Observații</h4>
+            @foreach (var m in observation.MicroObservations)
+            {
+                <div class="border p-2 mb-2 bg-light">
+                    <p><strong>Animal:</strong> @m.Animal.Name (@m.Animal.ScientificName)</p>
+                    <p><strong>Categorie:</strong> @m.Animal.Category</p>
+                    <p><strong>Descriere:</strong> @m.Animal.Description</p>
+                    <p><strong>Locație:</strong> LAT: @m.Latitude, LNG: @m.Longitude</p>
+                    <p><strong>Comentarii:</strong> @m.Comments</p>
+                    <p><strong>Timp:</strong> @m.Timestamp.ToString("g")</p>
+                    @if (!string.IsNullOrEmpty(m.PhotoUrl))
+                    {
+                        <img src="@m.PhotoUrl" alt="Micro photo" style="width: 100px;" />
+                    }
+                </div>
+            }
+        }
+    </div>
+}
+else
+{
+    <p>Loading observation...</p>
+}
+<style>
+    body {
+        margin: 0;
+        color: #e8e8c3;
+        padding: 0;
+        background: #4d8a39;
+        font-family: 'Times New Roman';
+    }
+
+    .card.p-4.mb-4{
+        color: #4f6359;
+    }
+</style>
+@code {
+    private Observation? observation;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var json = await jsRuntime.InvokeAsync<string>("localStorage.getItem", "selectedObservation");
+
+        if (!string.IsNullOrWhiteSpace(json))
+        {
+            observation = JsonSerializer.Deserialize<Observation>(json);
+        }
+    }
+
+    public class Observation
+    {
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string ResearcherType { get; set; } = "";
+        public string PhenologicalPhase { get; set; } = "";
+        public string Species { get; set; } = "";
+        public string Location { get; set; } = "";
+        public string Notes { get; set; } = "";
+        public List<string> PhotoUrls { get; set; } = new();
+        public string Comments { get; set; } = "";
+        public double Temperature { get; set; }
+        public double Humidity { get; set; }
+        public string Weather { get; set; } = "";
+        public string AdditionalDetails { get; set; } = "";
+        public List<MicroObservation> MicroObservations { get; set; } = new();
+    }
+
+    public class MicroObservation
+    {
+        public Animal Animal { get; set; } = new();
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public DateTime Timestamp { get; set; }
+        public string Comments { get; set; } = "";
+        public string PhotoUrl { get; set; } = "";
+    }
+
+    public class Animal
+    {
+        public string Name { get; set; } = "";
+        public string ScientificName { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Category { get; set; } = "";
+        public string Notes { get; set; } = "";
+    }
+} 

@@ -1,0 +1,150 @@
+﻿@page "/"
+@inject NavigationManager Navigation
+
+<PageTitle>Biodiversity Data Management</PageTitle>
+
+<div class="landing-container">
+    <div class="hero-section">
+        <h1>Bun venit în sistemul de monitorizare a biodiversității din Republica Moldova.</h1>
+        <p>
+            Această aplicație este concepută pentru cercetători și organizații, oferindu-le un instrument eficient pentru gestionarea datelor privind biodiversitatea. Permite monitorizarea schimbărilor ecosistemelor și analiza tendințelor biodiversității într-un mod eficient și sistematic.
+        </p>
+        <div class="buttons">
+            <button class="btn btn-primary" @onclick="NavigateToLogin">Începeți</button>
+        </div>
+    </div>
+</div>
+
+<section class="details-section">
+    <div class="hero-section2">
+    <div class="details-content">
+            
+        <h2>Ce oferă platforma</h2>
+
+            <p >
+            Platforma furnizează instrumente pentru a sprijini cercetătorii și conservatorii în gestionarea datelor despre biodiversitate. Cu funcționalități de urmărire a speciilor, monitorizarea ecosistemelor și instrumente de vizualizare, aveți posibilitatea de a lua decizii fundamentate pentru protejarea și conservarea biodiversității.
+                </p>
+         
+        <img src="/images/animal.jpg" height="200" width="400"/>
+           
+    </div>
+    <div class="details-buttons">
+        <button>Managementul datelor despre specii</button>
+        <button>Monitorizarea ecosistemelor</button>
+        <button>Vizualizarea și analiza datelor</button>
+        <button>Instrumente de cercetare colaborativă</button>
+    </div>
+    </div>
+</section>
+
+<footer class="footer">
+    <p>&copy; 2025 EcoMetric Biodiversity Data Platform. Toate drepturile rezervate.</p>
+</footer>
+
+<style>
+    .top-container {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 1rem;
+        background-color: #f8f9fa;
+        border-bottom: 1px solid #ddd;
+    }
+
+    .landing-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 720px;
+        background: url('/images/biodiversity.jpg') no-repeat center center/cover;
+        text-align: center;
+        color: white;
+        padding: 2rem;
+        border-radius: 0px;
+    }
+
+    .hero-section {
+        background: rgba(0, 0, 0, 0.6);
+        padding: 2rem;
+        border-radius: 10px;
+        max-width: 50%;
+    }
+
+    .hero-section2 {
+        background: rgba(77,138,57, 0.9);
+        max-width: 100%;
+        max-height: 100%;
+        padding: 5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .buttons {
+        margin-top: 1rem;
+    }
+
+    .btn-primary {
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+        background-color: rgba(77,138,57);
+        color: white;
+        border-radius: 20px;
+    }
+
+        .btn-primary:hover {
+            background-color: #9ec513;
+        }
+
+    .details-section {
+        padding: 0rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: url('/images/biodiversity.jpg') no-repeat center center/cover;
+        color: white;
+    }
+
+    .details-content {
+        flex: 1;
+        padding-right: 40px;
+        
+    }
+
+    .details-buttons {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+        .details-buttons button {
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 15px;
+            font-size: 1em;
+            text-align: left;
+            cursor: pointer;
+        }
+
+    
+
+
+    .footer {
+        text-align: center;
+        background-color: #284a1d;
+        padding: 1rem;
+        color: white;
+        margin-top: 0rem;
+    }
+</style>
+
+@code {
+    void NavigateToLogin()
+    {
+        Navigation.NavigateTo("/login");
+    }
+}

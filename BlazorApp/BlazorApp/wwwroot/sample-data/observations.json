@@ -1,0 +1,30 @@
+[
+  {
+    "Date": "2025-03-13",
+    "AnimalType": "Deer",
+    "SpeciesCount": 30,
+    "PhenologicalPhase": "Migration",
+    "Comments": "jnjn"
+  },
+  {
+    "Date": "2025-03-13",
+    "AnimalType": "Fox",
+    "SpeciesCount": 6,
+    "PhenologicalPhase": "Breeding",
+    "Comments": "No "
+  },
+  {
+    "Date": "2025-03-13",
+    "AnimalType": "Deer",
+    "SpeciesCount": 10,
+    "PhenologicalPhase": "Migration",
+    "Comments": "No comments"
+  },
+  {
+    "Date": "2025-03-13",
+    "AnimalType": "Wolf",
+    "SpeciesCount": 20,
+    "PhenologicalPhase": "Migration",
+    "Comments": "No comments"
+  }
+]

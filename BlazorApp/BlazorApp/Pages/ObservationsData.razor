@@ -1,0 +1,407 @@
+﻿@page "/observations"
+@using System.Text.Json
+@inject IJSRuntime jsRuntime
+
+@inject NavigationManager Navigation
+@using BrowserInterop.Extensions
+@using BrowserInterop.Geolocation
+@using Radzen
+@using BlazorApp.Models
+
+<h1>Creați o nouă observație</h1>
+<div class="form-section">
+    <div class="card p-4 mb-4">
+        <h4>Informații generale</h4>
+        <div class="mb-3">
+            <label>Titlu</label>
+            <input class="form-control" @bind="observation.Title" />
+        </div>
+        <div class="mb-3">
+            <label>Descriere</label>
+            <textarea class="form-control" @bind="observation.Description"></textarea>
+        </div>
+        <div class="mb-3">
+            <label>Tipul cercetării</label>
+            <select class="form-control" @bind="observation.ResearcherType">
+                @foreach (var type in researcherTypes)
+                {
+                    <option value="@type">@type</option>
+                }
+            </select>
+        </div>
+        <div class="mb-3">
+            <label>Faza fenologică</label>
+            <select class="form-control" @bind="observation.PhenologicalPhase">
+                @foreach (var phase in phenologicalPhases)
+                {
+                    <option value="@phase">@phase</option>
+                }
+            </select>
+        </div>
+        <div class="mb-3">
+            <label>Specii</label>
+            <input class="form-control" @bind="observation.Species" />
+        </div>
+        <div class="mb-3">
+            <label>Locație</label>
+            <select class="form-control" @bind="observation.Location">
+                @foreach (var loc in locations_list)
+                {
+                    <option value="@loc">@loc</option>
+                }
+            </select>
+        </div>
+        <div class="mb-3">
+            <label>Notițe</label>
+            <textarea class="form-control" @bind="observation.Notes"></textarea>
+        </div>
+        <div class="mb-3">
+            <label>Temperatura (°C)</label>
+            <input type="number" class="form-control" @bind="observation.Temperature" />
+        </div>
+        <div class="mb-3">
+            <label>Umiditate (%)</label>
+            <input type="number" class="form-control" @bind="observation.Humidity" />
+        </div>
+        <div class="mb-3">
+            <label>Stare atmosferică</label>
+            <select class="form-control" @bind="observation.Weather">
+                @foreach (var condition in weatherConditions)
+                {
+                    <option value="@condition">@condition</option>
+                }
+            </select>
+        </div>
+        <div class="mb-3">
+            <label>Detalii suplimentare</label>
+            <textarea class="form-control" @bind="observation.AdditionalDetails"></textarea>
+        </div>
+    </div>
+    @if (observation.MicroObservations.Any())
+    {
+        <div class="card p-4 mb-4">
+            <h4>Previzualizare micro observații</h4>
+            @foreach (var micro in observation.MicroObservations)
+            {
+                <div class="border p-2 mb-2">
+                    <p><strong>Animal:</strong> @micro.Animal.Name (@micro.Animal.ScientificName)</p>
+                    <p><strong>Locaţie:</strong> LAT: @micro.Latitude, LNG: @micro.Longitude</p>
+                    <p><strong>Comentarii:</strong> @micro.Comments</p>
+                    @if (!string.IsNullOrEmpty(micro.PhotoUrl))
+                    {
+                        <img src="@micro.PhotoUrl" style="width: 100px;" alt="animal photo" />
+                    }
+                </div>
+            }
+        </div>
+    }
+    @if (!showMicroForm)
+    {
+        <button class="btn btn-secondary mb-3" @onclick="() => showMicroForm = true">➕ Add New Micro Observation</button>
+    }
+    else
+    {
+        <div class="card p-4 mb-4">
+            <h4>Adaugă Micro Observație</h4>
+
+            <div class="mb-3">
+                <label>Numele animalului</label>
+                <input class="form-control" @bind="currentMicro.Animal.Name" />
+            </div>
+            <div class="mb-3">
+                <label>Nume științific</label>
+                <input class="form-control" @bind="currentMicro.Animal.ScientificName" />
+            </div>
+            <div class="mb-3">
+                <label>Descriere</label>
+                <textarea class="form-control" @bind="currentMicro.Animal.Description"></textarea>
+            </div>
+            <div class="mb-3">
+                <label>Categorie</label>
+                <select class="form-control" @bind="currentMicro.Animal.Category">
+                    @foreach (var category in animalCategories)
+                    {
+                        <option value="@category">@category</option>
+                    }
+                </select>
+            </div>
+            <div class="mb-3">
+                <label>Notițe</label>
+                <textarea class="form-control" @bind="currentMicro.Animal.Notes"></textarea>
+            </div>
+            <div class="mb-3">
+                <button class="btn btn-info me-2" @onclick="UseCurrentLocation">📍 Utilizează locația curentă</button>
+                <button class="btn btn-secondary" @onclick="EnableMapSelection">🗺️ Selectează locația pe hartă</button>
+            </div>
+
+            @if (selectedPosition != null)
+            {
+                <p><strong>Selected Location:</strong> @clickedLocationText</p>
+            }
+
+            @if (showMap)
+            {
+                <RadzenGoogleMap Style="height:400px;" Zoom="@zoom"
+                                 Center="@(new GoogleMapPosition { Lat = 47.0, Lng = 28.5 })"
+                                 MapClick="@OnMapClick">
+                    <Markers>
+                        @if (selectedPosition != null)
+                        {
+                            <RadzenGoogleMapMarker Title="Selected Location"
+                                                   Label="📍"
+                                                   Position="@selectedPosition" />
+                        }
+                    </Markers>
+                </RadzenGoogleMap>
+            }
+
+            <div class="mb-3">
+                <label>Comentarii</label>
+                <textarea class="form-control" @bind="currentMicro.Comments"></textarea>
+            </div>
+            <div class="mb-3">
+                <label>Photo URL (Base64 or link)</label>
+                <input class="form-control" @bind="currentMicro.PhotoUrl" />
+            </div>
+            <button class="btn btn-secondary" @onclick="AddMicroObservation">Salvați Micro Observație</button>
+        </div>
+    }
+</div>
+
+<div class="center-button">
+    <button class="btn btn-primary" @onclick="SaveObservation">Trimiteți observația</button>
+</div>
+
+
+<style>
+    
+    body {
+        margin: 0;
+        color: #f5f3cd;
+        padding: 0;
+        background: #4d8a39;
+        font-family: 'Times New Roman';
+        font-weight: bold;
+    }
+
+    .form-section {
+        background-color: #f5f3cd;
+        color: #4d8a39;
+        padding: 1rem;
+        border-radius: 0.5rem;
+    }
+
+        .form-section h4 {
+            color: #4d8a39;
+            border-bottom: 2px solid #4d8a39;
+            padding-bottom: 0.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .form-section button {
+            background-color: #4d8a39;
+            color: #f5f3cd;
+            border: none;
+            padding: 0.5rem 1rem;
+            font-weight: bold;
+            border-radius: 0.3rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+            .form-section button:hover {
+                background-color: #3b4f47;
+            }
+
+  
+
+    .card.p-4.mb-4 {
+        background-color: #f5f3cd; /* Set background color here */
+        color: #4d8a39; /* Set text color inside the card */
+    }
+
+        /* If you want to target individual elements inside the card specifically, you can add: */
+        .card.p-4.mb-4 .form-control {
+            color: #4d8a39; /* Text color for inputs, textareas, etc. */
+            background-color: white;
+        }
+
+        .card.p-4.mb-4 label {
+            color: #4d8a39; /* Label text color */
+        }
+
+        .card.p-4.mb-4 h4 {
+            color: #4d8a39; /* Header color */
+        }
+        .btn.btn-primary {
+        background-color: #246425;
+        color: #f5f3cd;
+        margin-top: 5px;
+        border-radius: 0.3rem;
+        padding: 0.5rem 1rem;
+        font-weight: bold;
+    }
+
+    .btn.btn-primary:hover {
+        background-color: #9ec513;
+    }
+
+    .btn:hover {
+        background-color: #9ec513;
+    }
+
+    /* Center the button */
+    .center-button {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin-top: 20px; /* Adjust top margin if needed */
+    }
+
+    .btn {
+        background-color: #4d8a39;
+        color: white;
+    }
+     
+        .btn:hover {
+            background-color: #9ec513;
+        }
+</style>
+@code {
+    private List<string> researcherTypes = new() { "Migrația păsărilor", "Migrația cuiburilor", "Migrația habitatelor", "Altele" };
+    private List<string> phenologicalPhases = new() {  "Emergență", "Începerea migrației","Sfârșitul migrației", "Împerechere / Reproducere","Cuibărit / Depunere de ouă", "Eclozare / Naștere", "Dezvoltare juvenilă","Năpârlire / Schimbare a pielii",    "Activitate maximă",    "Hrănire / Căutare de hrană",    "Hibernare / Repaus",    "Stabilirea teritoriului",  "Evenimente de mortalitate" };
+    private List<string> weatherConditions = new() { "Soare", "Înorat", "Ploios", "Furtunos", "Ninsoare", "Vântos" };
+    private List<string> animalCategories = new() { "Pasăre", "Mamifer", "Insectă", "Reptilă", "Amfibian", "Pește", "Altele" };
+    private List<string> locations_list = new() { "r. Anenii Noi, s. Hîrbovăț", "r. Anenii Noi, s. Bulboaca", "r. Anenii Noi, s. Telița", "r. Briceni, s. Caracușenii Vechi", "r. Briceni, s. Corjeuți ", "r. Călărași, s. Căbăiești ", "r. Călărași, s. Sadova ", "r. Călărași, s. Rassvet " };
+    private bool showMicroForm = false;
+    private WindowNavigatorGeolocation geolocation;
+    private GeolocationPosition? geolocationPosition;
+    private bool isUsingCurrentLocation = false;
+    private bool isLocationConfirmed = false;
+    private bool showMap = false;
+    private string clickedLocationText = "";
+    private GoogleMapPosition? selectedPosition = null;
+    private string locationError = "";
+    int zoom = 6;
+    private Observation observation = new();
+    private MicroObservation currentMicro = new();
+    protected override async Task OnInitializedAsync()
+    {
+        var window = await jsRuntime.Window();
+        var navigator = await window.Navigator();
+        geolocation = navigator.Geolocation;
+    }
+
+    private void AddMicroObservation()
+    {
+        currentMicro.Timestamp = DateTime.Now;
+        observation.MicroObservations.Add(currentMicro);
+        currentMicro = new MicroObservation(); // reset form
+        selectedPosition = null;
+        clickedLocationText = "";
+        showMicroForm = false; // hide form
+    }
+
+    private async Task UseCurrentLocation()
+    {
+        geolocationPosition = (await geolocation.GetCurrentPosition(new PositionOptions()
+            {
+                EnableHighAccuracy = true,
+                TimeoutTimeSpan = TimeSpan.FromSeconds(30)
+            })).Location;
+
+        if (geolocationPosition != null)
+        {
+            selectedPosition = new GoogleMapPosition
+                {
+                    Lat = geolocationPosition.Coords.Latitude,
+                    Lng = geolocationPosition.Coords.Longitude
+                };
+
+            currentMicro.Latitude = selectedPosition.Lat;
+            currentMicro.Longitude = selectedPosition.Lng;
+            clickedLocationText = $"LAT: {selectedPosition.Lat}, LNG: {selectedPosition.Lng}";
+            isLocationConfirmed = true;
+            showMap = false;
+        }
+    }
+
+    private void EnableMapSelection()
+    {
+        showMap = true;
+        selectedPosition = null;
+        clickedLocationText = "";
+        isLocationConfirmed = false;
+    }
+
+    private void OnMapClick(GoogleMapClickEventArgs args)
+    {
+        selectedPosition = new GoogleMapPosition { Lat = args.Position.Lat, Lng = args.Position.Lng };
+        currentMicro.Latitude = args.Position.Lat;
+        currentMicro.Longitude = args.Position.Lng;
+        clickedLocationText = $"LAT: {args.Position.Lat}, LNG: {args.Position.Lng}";
+        isLocationConfirmed = true;
+        StateHasChanged();
+    }
+
+
+    private async Task SaveObservation()
+    {
+        observation.MicroObservations ??= new List<MicroObservation>();
+
+        var existingJson = await jsRuntime.InvokeAsync<string>("localStorage.getItem", "observations");
+
+        var observations = string.IsNullOrEmpty(existingJson)
+            ? new List<Observation>()
+            : JsonSerializer.Deserialize<List<Observation>>(existingJson) ?? new List<Observation>();
+
+        observations.Add(observation);
+
+        var updatedJson = JsonSerializer.Serialize(observations);
+        await jsRuntime.InvokeVoidAsync("localStorage.setItem", "observations", updatedJson);
+
+        // Reset
+        observation = new Observation();
+        currentMicro = new MicroObservation();
+
+        // Navigate back to dashboard
+        Navigation.NavigateTo("/home");
+    }
+    public class Observation
+    {
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string ResearcherType { get; set; } = "";
+        public string PhenologicalPhase { get; set; } = "";
+        public string Species { get; set; } = "";
+        public string Location { get; set; } = "";
+        public string Notes { get; set; } = "";
+        public List<string> PhotoUrls { get; set; } = new();
+        public string Comments { get; set; } = "";
+        public double Temperature { get; set; }
+        public double Humidity { get; set; }
+        public string Weather { get; set; } = "";
+        public string AdditionalDetails { get; set; } = "";
+        public List<MicroObservation> MicroObservations { get; set; } = new();
+    }
+
+    public class MicroObservation
+    {
+        public Animal Animal { get; set; } = new();
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public DateTime Timestamp { get; set; }
+        public string Comments { get; set; } = "";
+        public string PhotoUrl { get; set; } = "";
+    }
+
+    public class Animal
+    {
+        public string Name { get; set; } = "";
+        public string ScientificName { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Category { get; set; } = "";
+        public string Notes { get; set; } = "";
+    }
+
+}

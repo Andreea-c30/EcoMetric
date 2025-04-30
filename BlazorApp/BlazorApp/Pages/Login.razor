@@ -1,0 +1,79 @@
+﻿@page "/login"
+@inject NavigationManager Navigation
+
+<div class="login-container">
+    <div class="login-card">
+        <h2 class="login-title">Bine ai venit</h2>
+        <p class="login-subtitle">Vă rugăm să introduceți datele de conectare</p>
+
+        <input type="text" placeholder="Username" class="form-control custom-input" />
+        <input type="password" placeholder="Password" class="form-control custom-input mt-3" />
+
+        <button class="btn custom-button mt-4" @onclick="Loginf">Login</button>
+    </div>
+</div>
+
+@code {
+    void Loginf()
+    {
+        // Simulate authentication logic
+        Navigation.NavigateTo("/home");
+    }
+}
+
+<style>
+    body {
+        background-color: #4d8438;
+    }
+
+    .login-container {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background-color: #4d8438;
+    }
+
+    .login-card {
+        background-color: #f5f3cd;
+        padding: 2rem 3rem;
+        border-radius: 1rem;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        text-align: center;
+        width: 350px;
+    }
+
+    .login-title {
+        margin-bottom: 0.5rem;
+        color: #4f6359;
+    }
+
+    .login-subtitle {
+        margin-bottom: 1.5rem;
+        color: #4f6359;
+        font-size: 1rem;
+    }
+
+    .custom-input {
+        background-color: #F0F0DB;
+        border: 1px solid #ccc;
+        border-radius: 0.5rem;
+        padding: 0.75rem;
+        font-size: 1rem;
+    }
+
+    .custom-button {
+        background-color: #4d8438;
+        color: #fff;
+        border: none;
+        padding: 0.75rem;
+        width: 100%;
+        border-radius: 0.5rem;
+        font-size: 1rem;
+        transition: background-color 0.3s ease;
+    }
+
+        .custom-button:hover {
+            background-color: #3d5047;
+        }
+</style>

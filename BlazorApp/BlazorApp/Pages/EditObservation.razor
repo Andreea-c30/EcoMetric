@@ -1,0 +1,198 @@
+﻿@page "/edit-observation"
+
+@using BlazorApp.Models
+@inject IJSRuntime jsRuntime
+@inject NavigationManager NavigationManager
+@using System.Text.Json
+
+<PageTitle>Edit Observation</PageTitle>
+
+<h1 class="dashboard-title">Editează Observația</h1>
+
+@if (selectedObservation != null)
+{
+    <div class="edit-form">
+        <label for="title">Titlu:</label>
+        <input type="text" id="title" @bind="selectedObservation.Title" disabled />
+
+        <label>Specii:</label>
+        <input type="text" @bind="selectedObservation.Species" />
+
+        <label>Temperatură(°C):</label>
+        <input type="number" @bind="selectedObservation.Temperature" />
+
+        <label>Starea atmosferică:</label>
+        <input type="text" @bind="selectedObservation.Weather" />
+
+        <h3>Micro Observații</h3>
+        @foreach (var micro in selectedObservation.MicroObservations)
+        {
+            <div class="micro-observation">
+                <label>Latitudine:</label>
+                <input type="number" step="any" @bind="micro.Latitude" />
+
+                <label>Longitudine:</label>
+                <input type="number" step="any" @bind="micro.Longitude" />
+
+                <label>Ora:</label>
+                <input type="datetime-local" @bind="micro.Timestamp" />
+
+                <label>Comentarii:</label>
+                <input type="text" @bind="micro.Comments" />
+
+                <label>Photo URL:</label>
+                <input type="text" @bind="micro.PhotoUrl" />
+
+                <h5>Detalii despre animale</h5>
+                <label>Numele:</label>
+                <input type="text" @bind="micro.Animal.Name" />
+
+                <label>Nume științific:</label>
+                <input type="text" @bind="micro.Animal.ScientificName" />
+
+                <label>Descriere:</label>
+                <input type="text" @bind="micro.Animal.Description" />
+
+                <label>Categorie:</label>
+                <input type="text" @bind="micro.Animal.Category" />
+
+                <label>Notițe:</label>
+                <input type="text" @bind="micro.Animal.Notes" />
+            </div>
+        }
+
+        <button class="save-btn" @onclick="SaveObservation">Salvează</button>
+    </div>
+}
+
+<style>
+   
+    body {
+        margin: 0;
+        color: #f5f3cd;
+        padding: 0;
+        background: #4d8a39;
+        font-family: 'Times New Roman';
+    }
+
+    .edit-form {
+        margin-top: 1rem;
+        max-width: 800px;
+    }
+
+        .edit-form label {
+            display: block;
+            margin-top: 1rem;
+            font-weight: bold;
+        }
+
+        .edit-form input {
+            width: 100%;
+            padding: 0.5rem;
+            margin-top: 0.3rem;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+    .micro-observation {
+        margin-top: 2rem;
+        padding: 1rem;
+        color: #f5f3cd;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        background-color: #4d8a39;
+    }
+
+    .save-btn {
+        margin-top: 2rem;
+        background-color: #246425;
+        color: #f5f3cd;
+        padding: 0.5rem 1.5rem;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+        .save-btn:hover {
+            background-color: #9ec513;
+        }
+</style>
+
+@code {
+    private Observation selectedObservation;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var json = await jsRuntime.InvokeAsync<string>("localStorage.getItem", "selectedObservation");
+
+        if (!string.IsNullOrEmpty(json))
+        {
+            selectedObservation = JsonSerializer.Deserialize<Observation>(json);
+        }
+    }
+
+    private async void SaveObservation()
+    {
+        var observationsJson = await jsRuntime.InvokeAsync<string>("localStorage.getItem", "observations");
+        var allObservations = new List<Observation>();
+
+        if (!string.IsNullOrEmpty(observationsJson))
+        {
+            allObservations = JsonSerializer.Deserialize<List<Observation>>(observationsJson) ?? new();
+        }
+
+        // Match by Id (NOT Title)
+        var index = allObservations.FindIndex(o => o.Title == selectedObservation.Title);
+
+        if (index != -1)
+        {
+            allObservations[index] = selectedObservation;
+        }
+
+        var updatedJson = JsonSerializer.Serialize(allObservations);
+        await jsRuntime.InvokeVoidAsync("localStorage.setItem", "observations", updatedJson);
+
+        var selectedJson = JsonSerializer.Serialize(selectedObservation);
+        await jsRuntime.InvokeVoidAsync("localStorage.setItem", "selectedObservation", selectedJson);
+
+        NavigationManager.NavigateTo("/home");
+    }
+
+    public class Observation
+    {
+   
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string ResearcherType { get; set; } = "";
+        public string PhenologicalPhase { get; set; } = "";
+        public string Species { get; set; } = "";
+        public string Location { get; set; } = "";
+        public string Notes { get; set; } = "";
+        public List<string> PhotoUrls { get; set; } = new();
+        public string Comments { get; set; } = "";
+        public double Temperature { get; set; }
+        public double Humidity { get; set; }
+        public string Weather { get; set; } = "";
+        public string AdditionalDetails { get; set; } = "";
+        public List<MicroObservation> MicroObservations { get; set; } = new();
+    }
+
+    public class MicroObservation
+    {
+        public Animal Animal { get; set; } = new();
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public DateTime Timestamp { get; set; }
+        public string Comments { get; set; } = "";
+        public string PhotoUrl { get; set; } = "";
+    }
+
+    public class Animal
+    {
+        public string Name { get; set; } = "";
+        public string ScientificName { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Category { get; set; } = "";
+        public string Notes { get; set; } = "";
+    }
+}

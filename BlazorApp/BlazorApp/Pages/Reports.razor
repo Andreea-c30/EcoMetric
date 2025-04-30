@@ -1,0 +1,202 @@
+﻿@page "/reports"
+@inject HttpClient Http
+@inject IJSRuntime JSRuntime
+@using System.Text.Json
+
+
+<PageTitle>Reports</PageTitle>
+
+<div class="reports-container">
+    <div class="reports-header">
+        <h1 class="title">Reports and Statistics</h1>
+        <p class="subtitle">Select the type of chart you want to view based on your observations.</p>
+
+        <div class="filters">
+            <label>Chart Type:</label>
+            <select class="form-select custom-select" @bind="selectedChartType">
+                <option value="bar">Bar</option>
+                <option value="line">Line</option>
+                <option value="pie">Pie</option>
+                <option value="doughnut">Doughnut</option>
+            </select>
+
+            <button class="btn custom-button mt-2" @onclick="RenderCharts">Update Charts</button>
+        </div>
+    </div>
+
+    @if (observations == null)
+    {
+        <p><em>Loading observations...</em></p>
+    }
+    else
+    {
+        <div class="charts">
+            <div class="chart-card">
+                <h2>Animals Observed</h2>
+                <canvas id="animalChart"></canvas>
+            </div>
+
+            <div class="chart-card">
+                <h2>Phenological Phases</h2>
+                <canvas id="phaseChart"></canvas>
+            </div>
+        </div>
+    }
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    window.renderDynamicCharts = (animalDataJson, phaseDataJson, chartType) => {
+        const animalData = JSON.parse(animalDataJson);
+        const phaseData = JSON.parse(phaseDataJson);
+
+        const animalCtx = document.getElementById('animalChart').getContext('2d');
+        const phaseCtx = document.getElementById('phaseChart').getContext('2d');
+
+        if (window.animalChartInstance) window.animalChartInstance.destroy();
+        if (window.phaseChartInstance) window.phaseChartInstance.destroy();
+
+        window.animalChartInstance = new Chart(animalCtx, {
+            type: chartType,
+            data: {
+                labels: animalData.labels,
+                datasets: [{
+                    label: 'Animals Observed',
+                    data: animalData.data,
+                    backgroundColor: '#4f6359',
+                    borderColor: '#4f6359',
+                    borderWidth: 1
+                }]
+            },
+            options: { responsive: true }
+        });
+
+        window.phaseChartInstance = new Chart(phaseCtx, {
+            type: chartType,
+            data: {
+                labels: phaseData.labels,
+                datasets: [{
+                    label: 'Phenological Phases',
+                    data: phaseData.data,
+                    backgroundColor: '#f5f3cd',
+                    borderColor: '#4f6359',
+                    borderWidth: 1
+                }]
+            },
+            options: { responsive: true }
+        });
+    }
+</script>
+
+@code {
+    private List<Observation>? observations;
+    private string selectedChartType = "bar"; // Default chart type
+
+    private AnimalChartData animalChartData = new();
+    private PhaseChartData phaseChartData = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadObservations();
+        await PrepareChartData();
+        await RenderCharts();
+    }
+
+    private async Task LoadObservations()
+    {
+        try
+        {
+            var observationsJson = await JSRuntime.InvokeAsync<string>("localStorage.getItem", "observations");
+            if (!string.IsNullOrWhiteSpace(observationsJson))
+            {
+                observations = JsonSerializer.Deserialize<List<Observation>>(observationsJson) ?? new();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading observations: {ex.Message}");
+        }
+    }
+
+    private async Task PrepareChartData()
+    {
+        if (observations == null) return;
+
+        var animals = observations
+            .SelectMany(obs => obs.MicroObservations)
+            .GroupBy(micro => micro.Animal.Category)
+            .Select(group => new { Category = group.Key, Count = group.Count() });
+
+        animalChartData = new AnimalChartData
+            {
+                Labels = animals.Select(a => a.Category ?? "Unknown").ToArray(),
+                Data = animals.Select(a => a.Count).ToArray()
+            };
+
+        var phases = observations
+            .GroupBy(obs => obs.PhenologicalPhase)
+            .Select(group => new { Phase = group.Key, Count = group.Count() });
+
+        phaseChartData = new PhaseChartData
+            {
+                Labels = phases.Select(p => p.Phase ?? "Unknown").ToArray(),
+                Data = phases.Select(p => p.Count).ToArray()
+            };
+    }
+
+    private async Task RenderCharts()
+    {
+        var animalJson = JsonSerializer.Serialize(animalChartData);
+        var phaseJson = JsonSerializer.Serialize(phaseChartData);
+
+        await JSRuntime.InvokeVoidAsync("renderDynamicCharts", animalJson, phaseJson, selectedChartType);
+    }
+
+    private class AnimalChartData
+    {
+        public string[] Labels { get; set; } = Array.Empty<string>();
+        public int[] Data { get; set; } = Array.Empty<int>();
+    }
+
+    private class PhaseChartData
+    {
+        public string[] Labels { get; set; } = Array.Empty<string>();
+        public int[] Data { get; set; } = Array.Empty<int>();
+    }
+    public class Observation
+    {
+        public string Title { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string ResearcherType { get; set; } = "";
+        public string PhenologicalPhase { get; set; } = "";
+        public string Species { get; set; } = "";
+        public string Location { get; set; } = "";
+        public string Notes { get; set; } = "";
+        public List<string> PhotoUrls { get; set; } = new();
+        public string Comments { get; set; } = "";
+        public double Temperature { get; set; }
+        public double Humidity { get; set; }
+        public string Weather { get; set; } = "";
+        public string AdditionalDetails { get; set; } = "";
+        public List<MicroObservation> MicroObservations { get; set; } = new();
+    }
+
+    public class MicroObservation
+    {
+        public Animal Animal { get; set; } = new();
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+        public DateTime Timestamp { get; set; }
+        public string Comments { get; set; } = "";
+        public string PhotoUrl { get; set; } = "";
+    }
+
+    public class Animal
+    {
+        public string Name { get; set; } = "";
+        public string ScientificName { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Category { get; set; } = "";
+        public string Notes { get; set; } = "";
+    }
+}

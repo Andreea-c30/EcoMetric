@@ -1,0 +1,64 @@
+﻿@inherits LayoutComponentBase
+
+<div class="page">
+ 
+    <main>
+        <div class="top-row px-4">
+            <div class="brand-container">
+                <h1 class="app-title">EcoMetric</h1>
+            </div>
+            <a href="/home" class="nav-link">Acasă</a>
+            <a href="/observations" class="nav-link">Observații</a>
+            <a href="/chartpg" class="nav-link">Statistici</a>
+            
+           
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+<style>
+    .top-row.px-4 {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        background-color: #f5f3cd;
+        color:#4d8438;
+        justify-content: left;
+        width: 100%;
+        padding-left: 100px;
+        
+        padding-right: 40px;
+
+        box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+
+    }
+
+    .app-title {
+        font-size: 32px;
+        font-weight: bold;
+        color: #4d8438;
+    }
+
+    .nav-link {
+        text-decoration: none;
+        color: #4d8438;
+        font-weight: bold;
+    }
+
+    .nav-link:hover {
+        text-decoration: underline;
+            color: #9ec513;
+        font-weight: bold;
+    }
+   
+</style>
